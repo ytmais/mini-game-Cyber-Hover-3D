@@ -1,0 +1,1262 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cyber Hover 3D - Edisi Ringan Celeron</title>
+    <!-- Tailwind CSS untuk UI yang responsif dan modern -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Inter & Orbitron untuk nuansa Sci-Fi -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Orbitron:wght@600;800;900&display=swap" rel="stylesheet">
+    <!-- Three.js r128 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #070412;
+            font-family: 'Inter', sans-serif;
+            color: #ffffff;
+        }
+        .font-cyber {
+            font-family: 'Orbitron', sans-serif;
+        }
+        #canvas-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        canvas {
+            display: block;
+            width: 100% !important;
+            height: 100% !important;
+            image-rendering: pixelated; /* Membantu ketajaman saat resolusi 0.7x */
+        }
+        /* Styling tombol bergaya Game Arcade / Synthwave */
+        .btn-cyber {
+            background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
+            border: 2px solid #67e8f9;
+            box-shadow: 0 4px 0 #1d4ed8, 0 0 15px rgba(6, 182, 212, 0.45);
+            transition: transform 0.1s ease, box-shadow 0.1s ease, filter 0.15s ease;
+        }
+        .btn-cyber:hover {
+            filter: brightness(1.12);
+        }
+        .btn-cyber:active {
+            transform: translateY(3px);
+            box-shadow: 0 1px 0 #1d4ed8, 0 0 8px rgba(6, 182, 212, 0.3);
+        }
+        .btn-secondary {
+            background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+            border: 1.5px solid #6366f1;
+            box-shadow: 0 3px 0 #1e1b4b;
+            transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.15s ease;
+        }
+        .btn-secondary:hover {
+            background: linear-gradient(135deg, #312e81 0%, #4338ca 100%);
+        }
+        .btn-secondary:active {
+            transform: translateY(2px);
+            box-shadow: 0 1px 0 #1e1b4b;
+        }
+        .glass-panel {
+            background: rgba(13, 10, 34, 0.88);
+            border: 1px solid rgba(99, 102, 241, 0.45);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.65);
+        }
+        /* Animasi ringan untuk indikator Shield & Combo */
+        @keyframes pulseGlow {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.75; transform: scale(1.04); }
+        }
+        .pulse-badge {
+            animation: pulseGlow 1.5s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body class="flex flex-col h-screen w-screen bg-[#070412]">
+
+    <!-- BAR ATAS: HUD Statistik, Pengaturan Performa Celeron & Kamera -->
+    <header class="w-full bg-[#0d0821] border-b border-indigo-900/80 px-3 py-2 flex flex-wrap items-center justify-between gap-2 z-20 shrink-0">
+        <!-- Kiri: Nama Game & Indikator FPS -->
+        <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2">
+                <span class="inline-block w-3 h-3 rounded-full bg-cyan-400 shadow-[0_0_8px_#22d3ee]"></span>
+                <h1 class="font-cyber text-sm sm:text-base font-extrabold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-sky-400 to-fuchsia-400">
+                    CYBER HOVER 3D
+                </h1>
+            </div>
+            <!-- Indikator FPS Real-Time -->
+            <div class="bg-slate-900/90 border border-slate-700 rounded-lg px-2.5 py-1 flex items-center gap-1.5 text-xs font-mono">
+                <span id="fps-dot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                <span id="fps-counter" class="text-emerald-300 font-bold">60 FPS</span>
+                <span id="res-label" class="text-[10px] text-slate-400 hidden sm:inline">(0.7x Celeron)</span>
+            </div>
+        </div>
+
+        <!-- Tengah: Skor, Combo, dan High Score -->
+        <div class="flex items-center gap-2 sm:gap-4">
+            <div class="bg-indigo-950/80 border border-indigo-700/60 rounded-lg px-3 py-1 text-center">
+                <div class="text-[10px] uppercase tracking-wider text-indigo-300">Skor</div>
+                <div id="score-display" class="font-cyber text-sm sm:text-base font-bold text-white">0</div>
+            </div>
+            <div class="bg-indigo-950/80 border border-cyan-700/60 rounded-lg px-3 py-1 text-center">
+                <div class="text-[10px] uppercase tracking-wider text-cyan-300">Combo</div>
+                <div id="combo-display" class="font-cyber text-sm sm:text-base font-bold text-cyan-300">x1</div>
+            </div>
+            <div class="bg-indigo-950/80 border border-amber-700/60 rounded-lg px-3 py-1 text-center">
+                <div class="text-[10px] uppercase tracking-wider text-amber-300">Rekor</div>
+                <div id="highscore-display" class="font-cyber text-sm sm:text-base font-bold text-amber-400">0</div>
+            </div>
+            <!-- Status Perisai Aktif -->
+            <div id="shield-badge" class="hidden pulse-badge bg-emerald-950/90 border border-emerald-400 rounded-lg px-2.5 py-1 flex items-center gap-1.5 text-xs font-semibold text-emerald-300">
+                <svg class="w-4 h-4 text-emerald-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M10 2L3 5v6c0 5.55 3.84 10.74 7 12 3.16-1.26 7-6.45 7-12V5l-7-3z"/>
+                </svg>
+                <span class="hidden md:inline">PERISAI AKTIF</span>
+            </div>
+        </div>
+
+        <!-- Kanan: Tombol Kualitas Grafis, Audio & Pause -->
+        <div class="flex items-center gap-1.5 sm:gap-2">
+            <button id="btn-quality" class="btn-secondary text-xs font-semibold px-2.5 py-1.5 rounded-lg text-cyan-200 flex items-center gap-1" title="Ubah Resolusi Render untuk Performa">
+                <span>⚡ Mode:</span>
+                <span id="quality-text" class="font-bold text-emerald-300">Celeron (0.7x)</span>
+            </button>
+            <button id="btn-audio" class="btn-secondary text-xs font-semibold px-2.5 py-1.5 rounded-lg text-indigo-200" title="Aktifkan/Matikan Suara">
+                🔊 Suara
+            </button>
+            <button id="btn-pause" class="btn-secondary text-xs font-semibold px-2.5 py-1.5 rounded-lg text-amber-200" title="Jeda Permainan (Tombol P)">
+                ⏸️ Jeda
+            </button>
+        </div>
+    </header>
+
+    <!-- AREA UTAMA KANVAS 3D & OVERLAY UI -->
+    <main id="canvas-container" class="flex-1 relative">
+        <!-- Info Interaksi Kamera & Kecepatan di Pojok Kiri Atas Kanvas -->
+        <div class="absolute top-3 left-3 z-10 pointer-events-none flex flex-col gap-1">
+            <div class="bg-black/50 border border-white/10 rounded-lg px-2.5 py-1 text-[11px] text-slate-300 flex items-center gap-2">
+                <span>Kecepatan: <strong id="speed-display" class="text-cyan-300 font-mono">100%</strong></span>
+                <span class="text-slate-500">|</span>
+                <span class="hidden sm:inline">Geser Mouse: Atur Sudut Kamera</span>
+            </div>
+            <!-- Pesan Notifikasi Singkat di Dalam Game (Tanpa alert) -->
+            <div id="toast-msg" class="opacity-0 transition-opacity duration-300 bg-cyan-950/90 border border-cyan-400 text-cyan-200 text-xs font-semibold px-3 py-1.5 rounded-lg shadow-lg">
+                Perisai Diaktifkan!
+            </div>
+        </div>
+
+        <!-- Tombol Reset Kamera jika pemain menggeser sudut kamera -->
+        <button id="btn-reset-cam" class="hidden absolute top-3 right-3 z-10 btn-secondary text-xs px-2.5 py-1 rounded-lg text-slate-200">
+            🎥 Reset Kamera
+        </button>
+
+        <!-- MODAL MENU AWAL / PAUSE / GAME OVER -->
+        <div id="modal-overlay" class="absolute inset-0 z-20 flex items-center justify-center p-4 bg-black/60">
+            <div class="glass-panel rounded-2xl max-w-md w-full p-6 text-center border-t-2 border-cyan-400/60">
+                <div class="inline-flex items-center gap-1.5 bg-cyan-950/90 border border-cyan-500/40 rounded-full px-3 py-1 text-[11px] font-semibold text-cyan-300 mb-3">
+                    <span>🚀 OPTIMASI KHUSUS INTEL CELERON & GPU INTEGRATED</span>
+                </div>
+
+                <h2 id="modal-title" class="font-cyber text-2xl sm:text-3xl font-black tracking-wide text-white mb-2">
+                    CYBER HOVER 3D
+                </h2>
+                <p id="modal-subtitle" class="text-xs sm:text-sm text-slate-300 mb-5 leading-relaxed">
+                    Kendalikan pesawat hover melintasi jalur siber! Hindari pilar merah tinggi, lompati pagar kuning rendah, dan kumpulkan kristal biru.
+                </p>
+
+                <!-- Ringkasan Skor Saat Game Over -->
+                <div id="gameover-stats" class="hidden grid grid-cols-2 gap-3 mb-5 bg-indigo-950/60 p-3 rounded-xl border border-indigo-800/60">
+                    <div>
+                        <div class="text-[11px] text-indigo-300 uppercase">Skor Akhir</div>
+                        <div id="final-score" class="font-cyber text-xl font-extrabold text-white">0</div>
+                    </div>
+                    <div>
+                        <div class="text-[11px] text-amber-300 uppercase">Rekor Terbaik</div>
+                        <div id="final-best" class="font-cyber text-xl font-extrabold text-amber-400">0</div>
+                    </div>
+                </div>
+
+                <!-- Panduan Objek & Kontrol -->
+                <div class="grid grid-cols-2 gap-2 text-left text-xs bg-slate-900/75 p-3.5 rounded-xl border border-slate-800 mb-5">
+                    <div class="flex items-center gap-2">
+                        <span class="w-3 h-3 rounded-sm bg-rose-500 inline-block shrink-0"></span>
+                        <span class="text-slate-300"><strong>Pilar Merah:</strong> Pindah lajur</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="w-3 h-3 rounded-sm bg-amber-400 inline-block shrink-0"></span>
+                        <span class="text-slate-300"><strong>Barier Kuning:</strong> Lompati</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="w-3 h-3 rotate-45 bg-cyan-400 inline-block shrink-0"></span>
+                        <span class="text-slate-300"><strong>Kristal Biru:</strong> +Skor & Combo</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="w-3 h-3 rounded-full bg-emerald-400 inline-block shrink-0"></span>
+                        <span class="text-slate-300"><strong>Perisai Hijau:</strong> Tahan 1 Tabrakan</span>
+                    </div>
+                </div>
+
+                <!-- Pilihan Mode Grafis Langsung di Modal -->
+                <div class="mb-5">
+                    <div class="text-xs text-slate-400 mb-2 font-medium">Pilih Mode Performa Grafis:</div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button id="modal-btn-celeron" class="py-2 px-3 rounded-xl text-xs font-bold border-2 border-emerald-400 bg-emerald-950/70 text-emerald-200 transition">
+                            ⚡ Mode Celeron (0.7x)<br>
+                            <span class="text-[10px] font-normal text-emerald-300/80">Sangat Ringan & Dingin</span>
+                        </button>
+                        <button id="modal-btn-standard" class="py-2 px-3 rounded-xl text-xs font-bold border border-slate-700 bg-slate-900/60 text-slate-400 transition">
+                            ✨ Mode Standar (1.0x)<br>
+                            <span class="text-[10px] font-normal text-slate-400">Resolusi Penuh</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tombol Mulai / Lanjutkan -->
+                <button id="btn-start-game" class="btn-cyber w-full py-3 rounded-xl font-cyber text-sm sm:text-base font-extrabold text-white tracking-wider">
+                    MULAI TERBANG (ENTER / SPASI)
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- BAR BAWAH: Kontrol Tombol di Luar Kanvas untuk Layar Sentuh & Mouse -->
+    <footer class="w-full bg-[#0d0821] border-t border-indigo-900/80 px-3 py-2.5 flex items-center justify-center gap-3 sm:gap-5 z-20 shrink-0">
+        <button id="ctrl-left" class="btn-secondary flex-1 max-w-[150px] py-2.5 px-4 rounded-xl font-cyber text-xs sm:text-sm font-bold text-cyan-300 flex items-center justify-center gap-1.5 active:scale-95">
+            <span>◀</span> <span>KIRI (A)</span>
+        </button>
+
+        <button id="ctrl-jump" class="btn-cyber flex-1 max-w-[180px] py-2.5 px-5 rounded-xl font-cyber text-xs sm:text-sm font-extrabold text-white flex items-center justify-center gap-1.5 active:scale-95">
+            <span>▲</span> <span>LOMPAT (SPASI)</span>
+        </button>
+
+        <button id="ctrl-right" class="btn-secondary flex-1 max-w-[150px] py-2.5 px-4 rounded-xl font-cyber text-xs sm:text-sm font-bold text-cyan-300 flex items-center justify-center gap-1.5 active:scale-95">
+            <span>KANAN (D)</span> <span>▶</span>
+        </button>
+    </footer>
+
+    <script>
+        /**
+         * ============================================================================
+         * CYBER HOVER 3D - ARSITEKTUR OPTIMASI KHUSUS INTEL CELERON
+         * ============================================================================
+         * 1. Object Pooling Ketat: Semua rintangan, kristal, perisai, dekorasi piramida
+         *    tepi jalan, dan partikel dibuat HANYA SEKALI saat inisialisasi. Tidak ada
+         *    pemanggilan `new THREE.Mesh()` atau `.dispose()` saat permainan berjalan
+         *    sehingga bebas dari stutter akibat Garbage Collection (GC).
+         * 2. Tanpa Shadow Map: Menggunakan bayangan palsu (blob shadow) berbentuk bidang
+         *    datar di atas tanah yang mengikuti posisi pesawat & rintangan.
+         * 3. Geometri & Material Bersama: Satu geometri dan satu material dipakai
+         *    bersama oleh puluhan objek di dalam pool.
+         * 4. Web Audio API Synthesizer: Efek suara retro dibuat secara matematis tanpa
+         *    file audio eksternal.
+         */
+
+        // ============================================================================
+        // 1. SISTEM SUARA SYNTHESIZER RINGAN (WEB AUDIO API)
+        // ============================================================================
+        class SoundEffects {
+            constructor() {
+                this.ctx = null;
+                this.enabled = true;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    try {
+                        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                        this.ctx = new AudioCtx();
+                    } catch (e) {
+                        this.enabled = false;
+                    }
+                }
+                if (this.ctx && this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+
+            playTone(freqStart, freqEnd, duration, type = 'sine', gainVal = 0.12) {
+                if (!this.enabled || !this.ctx) return;
+                try {
+                    const now = this.ctx.currentTime;
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+
+                    osc.type = type;
+                    osc.frequency.setValueAtTime(freqStart, now);
+                    if (freqEnd !== freqStart) {
+                        osc.frequency.exponentialRampToValueAtTime(Math.max(20, freqEnd), now + duration);
+                    }
+
+                    gain.gain.setValueAtTime(gainVal, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+
+                    osc.start(now);
+                    osc.stop(now + duration);
+                } catch (e) {
+                    // Abaikan jika browser memblokir audio sementara
+                }
+            }
+
+            moveLane() {
+                this.playTone(260, 380, 0.07, 'triangle', 0.08);
+            }
+
+            jump() {
+                this.playTone(220, 580, 0.18, 'sine', 0.12);
+            }
+
+            collectCrystal(combo) {
+                const baseFreq = Math.min(440 + combo * 45, 1100);
+                this.playTone(baseFreq, baseFreq * 1.4, 0.14, 'triangle', 0.13);
+            }
+
+            collectShield() {
+                this.playTone(330, 880, 0.28, 'sine', 0.15);
+            }
+
+            shieldBreak() {
+                this.playTone(420, 110, 0.3, 'sawtooth', 0.16);
+            }
+
+            crash() {
+                this.playTone(160, 40, 0.45, 'sawtooth', 0.2);
+            }
+        }
+
+        const sfx = new SoundEffects();
+
+        // ============================================================================
+        // 2. KONFIGURASI DAN STATE PERMAINAN
+        // ============================================================================
+        const LANES = [-3.2, 0, 3.2]; // Koordinat X untuk Lajur Kiri, Tengah, Kanan
+        const SPAWN_Z = -85;          // Jarak muncul objek di kejauhan (tertutup kabut)
+        const DESPAWN_Z = 14;         // Batas belakang kamera untuk daur ulang objek
+        const PLAYER_Z = 4.5;         // Posisi Z tetap untuk pesawat pemain
+
+        const state = {
+            mode: 'MENU', // 'MENU', 'PLAYING', 'PAUSED', 'GAMEOVER'
+            score: 0,
+            highScore: 0,
+            combo: 1,
+            baseSpeed: 28,
+            currentSpeed: 28,
+            maxSpeed: 64,
+            distanceTraveled: 0,
+            spawnTimer: 0,
+            lowSpecMode: true, // Default aktif: Mode Celeron 0.7x
+            laneIndex: 1,      // 0: Kiri, 1: Tengah, 2: Kanan
+            playerX: 0,
+            playerY: 0.65,
+            playerVelY: 0,
+            isJumping: false,
+            hasShield: false,
+            invincibleTimer: 0,
+            // Sudut Kamera Interaktif (Mouse Drag)
+            camYaw: 0,
+            camPitch: 0,
+            isDraggingCam: false,
+            lastMouseX: 0,
+            lastMouseY: 0
+        };
+
+        // Muat High Score dari localStorage
+        try {
+            const savedBest = localStorage.getItem('cyber_hover_highscore');
+            if (savedBest) state.highScore = parseInt(savedBest, 10) || 0;
+        } catch (e) {}
+
+        // ============================================================================
+        // 3. REFERENSI ELEMEN DOM
+        // ============================================================================
+        const container = document.getElementById('canvas-container');
+        const scoreEl = document.getElementById('score-display');
+        const comboEl = document.getElementById('combo-display');
+        const highScoreEl = document.getElementById('highscore-display');
+        const speedEl = document.getElementById('speed-display');
+        const shieldBadgeEl = document.getElementById('shield-badge');
+        const fpsCounterEl = document.getElementById('fps-counter');
+        const fpsDotEl = document.getElementById('fps-dot');
+        const resLabelEl = document.getElementById('res-label');
+        const qualityTextEl = document.getElementById('quality-text');
+        const toastMsgEl = document.getElementById('toast-msg');
+        const modalOverlay = document.getElementById('modal-overlay');
+        const modalTitle = document.getElementById('modal-title');
+        const modalSubtitle = document.getElementById('modal-subtitle');
+        const gameoverStats = document.getElementById('gameover-stats');
+        const finalScoreEl = document.getElementById('final-score');
+        const finalBestEl = document.getElementById('final-best');
+        const btnStartGame = document.getElementById('btn-start-game');
+        const btnQuality = document.getElementById('btn-quality');
+        const btnAudio = document.getElementById('btn-audio');
+        const btnPause = document.getElementById('btn-pause');
+        const btnResetCam = document.getElementById('btn-reset-cam');
+        const modalBtnCeleron = document.getElementById('modal-btn-celeron');
+        const modalBtnStandard = document.getElementById('modal-btn-standard');
+
+        highScoreEl.textContent = state.highScore;
+
+        let toastTimeout = null;
+        function showToast(text) {
+            toastMsgEl.textContent = text;
+            toastMsgEl.classList.remove('opacity-0');
+            toastMsgEl.classList.add('opacity-100');
+            if (toastTimeout) clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                toastMsgEl.classList.remove('opacity-100');
+                toastMsgEl.classList.add('opacity-0');
+            }, 1800);
+        }
+
+        // ============================================================================
+        // 4. INISIALISASI THREE.JS & SCENE RENDAH POLIGON
+        // ============================================================================
+        let scene, camera, renderer;
+        let playerGroup, playerShipMesh, playerShadowMesh, shieldMesh, engineFlameMesh;
+
+        // Pool Array untuk Object Pooling (Bebas Garbage Collection)
+        const obstaclePool = [];
+        const gridLinePool = [];
+        const sidePropPool = [];
+        const particlePool = [];
+
+        function initThreeJS() {
+            // 1. Scene & Fog untuk menyembunyikan jarak pandang pendek secara estetik
+            scene = new THREE.Scene();
+            const bgColor = 0x090518;
+            scene.background = new THREE.Color(bgColor);
+            scene.fog = new THREE.Fog(bgColor, 28, 84);
+
+            // 2. Kamera Perspektif
+            camera = new THREE.PerspectiveCamera(
+                60,
+                container.clientWidth / container.clientHeight,
+                0.5,
+                90
+            );
+            camera.position.set(0, 4.2, 10.2);
+            camera.lookAt(0, 1.0, -10);
+
+            // 3. Renderer WebGL yang dioptimalkan untuk Intel Celeron (Tanpa Antialias & ShadowMap)
+            renderer = new THREE.WebGLRenderer({
+                antialias: false,
+                powerPreference: 'high-performance',
+                precision: 'mediump',
+                stencil: false,
+                depth: true
+            });
+            renderer.shadowMap.enabled = false;
+            container.appendChild(renderer.domElement);
+
+            // Terapkan Mode Celeron (0.7x) secara default
+            applyGraphicsMode(true);
+
+            // 4. Pencahayaan Ringan (1 AmbientLight + 1 DirectionalLight)
+            const ambientLight = new THREE.AmbientLight(0x5b4b8a, 1.35);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.95);
+            dirLight.position.set(12, 24, 16);
+            scene.add(dirLight);
+
+            // 5. Bangun Lingkungan Statis, Pesawat Pemain, dan Object Pools
+            buildEnvironment();
+            buildPlayerHovercraft();
+            initObjectPools();
+        }
+
+        // ============================================================================
+        // 5. PEMBUATAN LINGKUNGAN SYNTHWAVE LOW-POLY
+        // ============================================================================
+        function buildEnvironment() {
+            // Lantai Utama Jalan Raya Siber
+            const roadGeo = new THREE.PlaneGeometry(11.5, 110);
+            const roadMat = new THREE.MeshBasicMaterial({ color: 0x110b29 });
+            const roadMesh = new THREE.Mesh(roadGeo, roadMat);
+            roadMesh.rotation.x = -Math.PI / 2;
+            roadMesh.position.set(0, 0, -35);
+            scene.add(roadMesh);
+
+            // Lantai Luar (Gurun Siber Gelap)
+            const groundGeo = new THREE.PlaneGeometry(140, 110);
+            const groundMat = new THREE.MeshBasicMaterial({ color: 0x070412 });
+            const groundMesh = new THREE.Mesh(groundGeo, groundMat);
+            groundMesh.rotation.x = -Math.PI / 2;
+            groundMesh.position.set(0, -0.05, -35);
+            scene.add(groundMesh);
+
+            // Garis Pembatas Lajur Permanen (4 Garis Neon Membujur)
+            const railGeo = new THREE.PlaneGeometry(0.12, 110);
+            const railMatCenter = new THREE.MeshBasicMaterial({ color: 0x3b82f6 });
+            const railMatEdge = new THREE.MeshBasicMaterial({ color: 0xd946ef });
+
+            const railPositions = [-4.8, -1.6, 1.6, 4.8];
+            railPositions.forEach((xPos, idx) => {
+                const mat = (idx === 0 || idx === 3) ? railMatEdge : railMatCenter;
+                const rail = new THREE.Mesh(railGeo, mat);
+                rail.rotation.x = -Math.PI / 2;
+                rail.position.set(xPos, 0.02, -35);
+                scene.add(rail);
+            });
+
+            // Matahari Retro Synthwave di Cakrawala (Statis, 0 biaya CPU)
+            const sunGeo = new THREE.CircleGeometry(18, 16);
+            const sunMat = new THREE.MeshBasicMaterial({ color: 0xf43f5e, fog: false });
+            const sunMesh = new THREE.Mesh(sunGeo, sunMat);
+            sunMesh.position.set(0, 12, -82);
+            scene.add(sunMesh);
+
+            // Garis Grid Melintang yang Bergerak (Object Pool)
+            const crossLineGeo = new THREE.PlaneGeometry(9.6, 0.18);
+            const crossLineMat = new THREE.MeshBasicMaterial({ color: 0x2dd4bf });
+            for (let i = 0; i < 14; i++) {
+                const line = new THREE.Mesh(crossLineGeo, crossLineMat);
+                line.rotation.x = -Math.PI / 2;
+                line.position.set(0, 0.015, DESPAWN_Z - i * 7.2);
+                scene.add(line);
+                gridLinePool.push(line);
+            }
+
+            // Dekorasi Piramida Low-Poly di Tepi Kiri & Kanan Jalan (Object Pool)
+            const pyramidGeo = new THREE.ConeGeometry(2.6, 4.5, 4);
+            const pyramidMat = new THREE.MeshLambertMaterial({ color: 0x311042, emissive: 0x150626 });
+            for (let i = 0; i < 12; i++) {
+                const pyr = new THREE.Mesh(pyramidGeo, pyramidMat);
+                const isLeft = i % 2 === 0;
+                pyr.position.set(isLeft ? -9.5 : 9.5, 2.2, DESPAWN_Z - i * 8.5);
+                pyr.rotation.y = Math.PI / 4;
+                scene.add(pyr);
+                sidePropPool.push(pyr);
+            }
+        }
+
+        // ============================================================================
+        // 6. PEMBUATAN PESAWAT HOVER PEMAIN (LOW-POLY)
+        // ============================================================================
+        function buildPlayerHovercraft() {
+            playerGroup = new THREE.Group();
+            playerGroup.position.set(0, state.playerY, PLAYER_Z);
+            scene.add(playerGroup);
+
+            // Grup internal untuk kemiringan (roll & pitch)
+            playerShipMesh = new THREE.Group();
+            playerGroup.add(playerShipMesh);
+
+            // Bodi Utama Pesawat
+            const bodyGeo = new THREE.ConeGeometry(0.85, 2.3, 4);
+            bodyGeo.rotateX(-Math.PI / 2);
+            bodyGeo.rotateZ(Math.PI / 4);
+            const bodyMat = new THREE.MeshLambertMaterial({
+                color: 0x38bdf8,
+                emissive: 0x0369a1
+            });
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            body.scale.set(1.1, 0.45, 1.0);
+            playerShipMesh.add(body);
+
+            // Sayap Kiri & Kanan
+            const wingGeo = new THREE.BoxGeometry(2.1, 0.12, 0.85);
+            const wingMat = new THREE.MeshLambertMaterial({
+                color: 0xe879f9,
+                emissive: 0x701a75
+            });
+            const wings = new THREE.Mesh(wingGeo, wingMat);
+            wings.position.set(0, -0.05, 0.35);
+            playerShipMesh.add(wings);
+
+            // Kokpit Kaca Gelap
+            const cockpitGeo = new THREE.BoxGeometry(0.55, 0.28, 0.9);
+            const cockpitMat = new THREE.MeshBasicMaterial({ color: 0x0f172a });
+            const cockpit = new THREE.Mesh(cockpitGeo, cockpitMat);
+            cockpit.position.set(0, 0.18, 0.05);
+            playerShipMesh.add(cockpit);
+
+            // Api Pendorong Belakang (Thruster)
+            const flameGeo = new THREE.ConeGeometry(0.28, 0.75, 5);
+            flameGeo.rotateX(Math.PI / 2);
+            const flameMat = new THREE.MeshBasicMaterial({ color: 0x22d3ee });
+            engineFlameMesh = new THREE.Mesh(flameGeo, flameMat);
+            engineFlameMesh.position.set(0, -0.02, 1.25);
+            playerShipMesh.add(engineFlameMesh);
+
+            // Kubah Perisai (Shield) - Hanya terlihat saat aktif
+            const shieldGeo = new THREE.OctahedronGeometry(1.35, 1);
+            const shieldMat = new THREE.MeshBasicMaterial({
+                color: 0x34d399,
+                wireframe: true
+            });
+            shieldMesh = new THREE.Mesh(shieldGeo, shieldMat);
+            shieldMesh.visible = false;
+            playerGroup.add(shieldMesh);
+
+            // Bayangan Palsu (Blob Shadow) di Atas Tanah agar Lompatan Terlihat Jelas
+            const shadowGeo = new THREE.CircleGeometry(0.85, 8);
+            const shadowMat = new THREE.MeshBasicMaterial({ color: 0x04020a });
+            playerShadowMesh = new THREE.Mesh(shadowGeo, shadowMat);
+            playerShadowMesh.rotation.x = -Math.PI / 2;
+            playerShadowMesh.position.set(0, 0.03, PLAYER_Z);
+            scene.add(playerShadowMesh);
+        }
+
+        // ============================================================================
+        // 7. OBJECT POOLING UNTUK RINTANGAN, KRISTAL, PERISAI & PARTIKEL
+        // ============================================================================
+        function initObjectPools() {
+            // Geometri & Material bersama (Shared Geometries & Materials)
+            const tallPillarGeo = new THREE.BoxGeometry(1.7, 3.6, 1.7);
+            const tallPillarMat = new THREE.MeshLambertMaterial({
+                color: 0xf43f5e,
+                emissive: 0x881337
+            });
+
+            const lowBarrierGeo = new THREE.BoxGeometry(2.3, 0.9, 0.75);
+            const lowBarrierMat = new THREE.MeshLambertMaterial({
+                color: 0xfbbf24,
+                emissive: 0x92400e
+            });
+
+            const crystalGeo = new THREE.OctahedronGeometry(0.65, 0);
+            const crystalMat = new THREE.MeshLambertMaterial({
+                color: 0x22d3ee,
+                emissive: 0x0891b2
+            });
+
+            const shieldItemGeo = new THREE.OctahedronGeometry(0.7, 1);
+            const shieldItemMat = new THREE.MeshBasicMaterial({
+                color: 0x34d399,
+                wireframe: true
+            });
+
+            // Buat 28 objek di dalam Pool (7 dari setiap tipe)
+            const types = ['TALL_PILLAR', 'LOW_BARRIER', 'CRYSTAL', 'SHIELD'];
+            for (let i = 0; i < 28; i++) {
+                const type = types[i % 4];
+                let mesh;
+                let baseY = 0;
+
+                if (type === 'TALL_PILLAR') {
+                    mesh = new THREE.Mesh(tallPillarGeo, tallPillarMat);
+                    baseY = 1.8;
+                } else if (type === 'LOW_BARRIER') {
+                    mesh = new THREE.Mesh(lowBarrierGeo, lowBarrierMat);
+                    baseY = 0.45;
+                } else if (type === 'CRYSTAL') {
+                    mesh = new THREE.Mesh(crystalGeo, crystalMat);
+                    baseY = 1.0;
+                } else {
+                    mesh = new THREE.Mesh(shieldItemGeo, shieldItemMat);
+                    baseY = 1.1;
+                }
+
+                mesh.visible = false;
+                scene.add(mesh);
+
+                obstaclePool.push({
+                    mesh: mesh,
+                    type: type,
+                    active: false,
+                    lane: 1,
+                    baseY: baseY
+                });
+            }
+
+            // Pool Partikel Ledakan / Ambil Kristal (18 kubus kecil)
+            const partGeo = new THREE.BoxGeometry(0.24, 0.24, 0.24);
+            const partMatCyan = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
+            const partMatRose = new THREE.MeshBasicMaterial({ color: 0xf43f5e });
+
+            for (let i = 0; i < 18; i++) {
+                const pMesh = new THREE.Mesh(partGeo, i % 2 === 0 ? partMatCyan : partMatRose);
+                pMesh.visible = false;
+                scene.add(pMesh);
+                particlePool.push({
+                    mesh: pMesh,
+                    active: false,
+                    vx: 0,
+                    vy: 0,
+                    vz: 0,
+                    life: 0
+                });
+            }
+        }
+
+        // Ambil 1 objek yang sedang tidak aktif dari pool berdasarkan tipe
+        function spawnFromPool(type, laneIdx, zOffset = 0) {
+            for (let i = 0; i < obstaclePool.length; i++) {
+                const item = obstaclePool[i];
+                if (!item.active && item.type === type) {
+                    item.active = true;
+                    item.lane = laneIdx;
+                    item.mesh.position.set(LANES[laneIdx], item.baseY, SPAWN_Z + zOffset);
+                    item.mesh.rotation.set(0, 0, 0);
+                    item.mesh.visible = true;
+                    return item;
+                }
+            }
+            return null;
+        }
+
+        // Efek semburan partikel dari pool tanpa alokasi memori baru
+        function triggerParticles(x, y, z) {
+            let count = 0;
+            for (let i = 0; i < particlePool.length; i++) {
+                const p = particlePool[i];
+                if (!p.active) {
+                    p.active = true;
+                    p.life = 0.45;
+                    p.mesh.position.set(x, y, z);
+                    p.vx = (Math.random() - 0.5) * 9;
+                    p.vy = Math.random() * 6 + 2;
+                    p.vz = (Math.random() - 0.5) * 9;
+                    p.mesh.visible = true;
+                    count++;
+                    if (count >= 6) break;
+                }
+            }
+        }
+
+        // ============================================================================
+        // 8. LOGIKA SPAWN BARIS RINTANGAN & KRISTAL
+        // ============================================================================
+        function spawnObstacleWave() {
+            // Pilih pola rintangan secara acak namun selalu menyisakan minimal 1 jalur aman
+            const pattern = Math.random();
+
+            if (pattern < 0.35) {
+                // Pola 1: Dua rintangan, satu lajur berisi kristal
+                const safeLane = Math.floor(Math.random() * 3);
+                for (let lane = 0; lane < 3; lane++) {
+                    if (lane === safeLane) {
+                        if (Math.random() < 0.75) spawnFromPool('CRYSTAL', lane);
+                    } else {
+                        const obsType = Math.random() < 0.55 ? 'TALL_PILLAR' : 'LOW_BARRIER';
+                        spawnFromPool(obsType, lane);
+                    }
+                }
+            } else if (pattern < 0.72) {
+                // Pola 2: Satu pilar tinggi, satu barier rendah, satu kristal/perisai
+                const lanesOrder = [0, 1, 2].sort(() => Math.random() - 0.5);
+                spawnFromPool('TALL_PILLAR', lanesOrder[0]);
+                spawnFromPool('LOW_BARRIER', lanesOrder[1]);
+
+                // Peluang kecil muncul Perisai jika pemain belum punya perisai
+                if (!state.hasShield && Math.random() < 0.16) {
+                    spawnFromPool('SHIELD', lanesOrder[2]);
+                } else {
+                    spawnFromPool('CRYSTAL', lanesOrder[2]);
+                }
+            } else {
+                // Pola 3: Deretan 3 Kristal Beruntun di satu lajur + 1 rintangan di lajur lain
+                const crystalLane = Math.floor(Math.random() * 3);
+                const hazardLane = (crystalLane + 1 + Math.floor(Math.random() * 2)) % 3;
+                spawnFromPool('TALL_PILLAR', hazardLane, 0);
+                spawnFromPool('CRYSTAL', crystalLane, 0);
+                spawnFromPool('CRYSTAL', crystalLane, -4.5);
+                spawnFromPool('CRYSTAL', crystalLane, -9.0);
+            }
+        }
+
+        // ============================================================================
+        // 9. KONTROL PEMAIN & PENGATURAN KUALITAS GRAFIS
+        // ============================================================================
+        function moveLeft() {
+            if (state.mode !== 'PLAYING') return;
+            if (state.laneIndex > 0) {
+                state.laneIndex--;
+                sfx.moveLane();
+            }
+        }
+
+        function moveRight() {
+            if (state.mode !== 'PLAYING') return;
+            if (state.laneIndex < 2) {
+                state.laneIndex++;
+                sfx.moveLane();
+            }
+        }
+
+        function triggerJump() {
+            if (state.mode !== 'PLAYING') return;
+            if (!state.isJumping) {
+                state.isJumping = true;
+                state.playerVelY = 12.2;
+                sfx.jump();
+            }
+        }
+
+        function applyGraphicsMode(isLowSpec) {
+            state.lowSpecMode = isLowSpec;
+            const ratio = isLowSpec ? 0.7 : 1.0;
+
+            if (renderer) {
+                renderer.setPixelRatio(ratio);
+                renderer.setSize(container.clientWidth, container.clientHeight, false);
+            }
+
+            if (isLowSpec) {
+                qualityTextEl.textContent = 'Celeron (0.7x)';
+                qualityTextEl.className = 'font-bold text-emerald-300';
+                resLabelEl.textContent = '(0.7x Celeron)';
+                modalBtnCeleron.className = 'py-2 px-3 rounded-xl text-xs font-bold border-2 border-emerald-400 bg-emerald-950/70 text-emerald-200 transition';
+                modalBtnStandard.className = 'py-2 px-3 rounded-xl text-xs font-bold border border-slate-700 bg-slate-900/60 text-slate-400 transition';
+            } else {
+                qualityTextEl.textContent = 'Standar (1.0x)';
+                qualityTextEl.className = 'font-bold text-cyan-300';
+                resLabelEl.textContent = '(1.0x Standar)';
+                modalBtnStandard.className = 'py-2 px-3 rounded-xl text-xs font-bold border-2 border-cyan-400 bg-cyan-950/70 text-cyan-200 transition';
+                modalBtnCeleron.className = 'py-2 px-3 rounded-xl text-xs font-bold border border-slate-700 bg-slate-900/60 text-slate-400 transition';
+            }
+        }
+
+        function startGame() {
+            sfx.init();
+
+            if (state.mode === 'PAUSED') {
+                state.mode = 'PLAYING';
+                modalOverlay.classList.add('hidden');
+                return;
+            }
+
+            // Reset semua variabel permainan
+            state.mode = 'PLAYING';
+            state.score = 0;
+            state.combo = 1;
+            state.currentSpeed = state.baseSpeed;
+            state.distanceTraveled = 0;
+            state.spawnTimer = 0.4;
+            state.laneIndex = 1;
+            state.playerX = 0;
+            state.playerY = 0.65;
+            state.playerVelY = 0;
+            state.isJumping = false;
+            state.hasShield = false;
+            state.invincibleTimer = 0;
+
+            shieldMesh.visible = false;
+            shieldBadgeEl.classList.add('hidden');
+
+            // Sembunyikan semua objek di dalam pool untuk daur ulang bersih
+            for (let i = 0; i < obstaclePool.length; i++) {
+                obstaclePool[i].active = false;
+                obstaclePool[i].mesh.visible = false;
+            }
+            for (let i = 0; i < particlePool.length; i++) {
+                particlePool[i].active = false;
+                particlePool[i].mesh.visible = false;
+            }
+
+            updateHUD();
+            modalOverlay.classList.add('hidden');
+        }
+
+        function togglePause() {
+            if (state.mode === 'PLAYING') {
+                state.mode = 'PAUSED';
+                modalTitle.textContent = 'PERMAINAN DIJEDA';
+                modalSubtitle.textContent = 'Istirahat sejenak. Tekan tombol di bawah atau tombol P untuk melanjutkan terbang.';
+                gameoverStats.classList.add('hidden');
+                btnStartGame.textContent = 'LANJUTKAN PERMAINAN';
+                modalOverlay.classList.remove('hidden');
+            } else if (state.mode === 'PAUSED') {
+                startGame();
+            }
+        }
+
+        function triggerGameOver() {
+            state.mode = 'GAMEOVER';
+            sfx.crash();
+
+            if (state.score > state.highScore) {
+                state.highScore = Math.floor(state.score);
+                try {
+                    localStorage.setItem('cyber_hover_highscore', state.highScore.toString());
+                } catch (e) {}
+            }
+
+            updateHUD();
+
+            modalTitle.textContent = 'PESAWAT TERTABRAK!';
+            modalSubtitle.textContent = 'Jangan menyerah! Gunakan lompatan untuk melewati barier kuning dan ambil perisai hijau.';
+            finalScoreEl.textContent = Math.floor(state.score);
+            finalBestEl.textContent = state.highScore;
+            gameoverStats.classList.remove('hidden');
+            btnStartGame.textContent = 'MAIN LAGI (ENTER / SPASI)';
+            modalOverlay.classList.remove('hidden');
+        }
+
+        function updateHUD() {
+            scoreEl.textContent = Math.floor(state.score);
+            comboEl.textContent = 'x' + state.combo;
+            highScoreEl.textContent = state.highScore;
+            const speedPct = Math.round((state.currentSpeed / state.baseSpeed) * 100);
+            speedEl.textContent = speedPct + '%';
+        }
+
+        // ============================================================================
+        // 10. EVENT LISTENERS (KEYBOARD, MOUSE CAMERA, TOMBOL LAYAR & SENTUHAN)
+        // ============================================================================
+        function setupEventListeners() {
+            // Keyboard Controls
+            window.addEventListener('keydown', (e) => {
+                if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
+                    e.preventDefault();
+                    moveLeft();
+                } else if (e.code === 'ArrowRight' || e.code === 'KeyD') {
+                    e.preventDefault();
+                    moveRight();
+                } else if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') {
+                    e.preventDefault();
+                    if (state.mode === 'PLAYING') {
+                        triggerJump();
+                    } else {
+                        startGame();
+                    }
+                } else if (e.code === 'Enter') {
+                    if (state.mode !== 'PLAYING') {
+                        e.preventDefault();
+                        startGame();
+                    }
+                } else if (e.code === 'KeyP' || e.code === 'Escape') {
+                    e.preventDefault();
+                    togglePause();
+                }
+            });
+
+            // Tombol Kontrol di Layar Bawah
+            document.getElementById('ctrl-left').addEventListener('click', moveLeft);
+            document.getElementById('ctrl-right').addEventListener('click', moveRight);
+            document.getElementById('ctrl-jump').addEventListener('click', triggerJump);
+
+            // Tombol UI Header & Modal
+            btnStartGame.addEventListener('click', startGame);
+            btnPause.addEventListener('click', togglePause);
+
+            btnQuality.addEventListener('click', () => {
+                applyGraphicsMode(!state.lowSpecMode);
+                showToast(state.lowSpecMode ? 'Mode Celeron (0.7x) Aktif' : 'Mode Standar (1.0x) Aktif');
+            });
+
+            modalBtnCeleron.addEventListener('click', () => applyGraphicsMode(true));
+            modalBtnStandard.addEventListener('click', () => applyGraphicsMode(false));
+
+            btnAudio.addEventListener('click', () => {
+                sfx.init();
+                sfx.enabled = !sfx.enabled;
+                btnAudio.textContent = sfx.enabled ? '🔊 Suara' : '🔇 Bisu';
+            });
+
+            btnResetCam.addEventListener('click', () => {
+                state.camYaw = 0;
+                state.camPitch = 0;
+                btnResetCam.classList.add('hidden');
+            });
+
+            // Interaksi Kamera dengan Mouse (mousedown, mousemove, mouseup) pada Kanvas
+            const domCanvas = renderer.domElement;
+            domCanvas.addEventListener('mousedown', (e) => {
+                state.isDraggingCam = true;
+                state.lastMouseX = e.clientX;
+                state.lastMouseY = e.clientY;
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                if (!state.isDraggingCam) return;
+                const dx = e.clientX - state.lastMouseX;
+                const dy = e.clientY - state.lastMouseY;
+                state.lastMouseX = e.clientX;
+                state.lastMouseY = e.clientY;
+
+                state.camYaw = Math.max(-0.6, Math.min(0.6, state.camYaw - dx * 0.005));
+                state.camPitch = Math.max(-0.25, Math.min(0.45, state.camPitch + dy * 0.005));
+                btnResetCam.classList.remove('hidden');
+            });
+
+            window.addEventListener('mouseup', () => {
+                state.isDraggingCam = false;
+            });
+
+            // Dukungan Swipe Layar Sentuh pada Kanvas
+            let touchStartX = 0;
+            let touchStartY = 0;
+            domCanvas.addEventListener('touchstart', (e) => {
+                if (e.touches.length > 0) {
+                    touchStartX = e.touches[0].clientX;
+                    touchStartY = e.touches[0].clientY;
+                }
+            }, { passive: true });
+
+            domCanvas.addEventListener('touchend', (e) => {
+                if (e.changedTouches.length > 0) {
+                    const dx = e.changedTouches[0].clientX - touchStartX;
+                    const dy = e.changedTouches[0].clientY - touchStartY;
+                    if (Math.abs(dx) > 30 || Math.abs(dy) > 30) {
+                        if (Math.abs(dx) > Math.abs(dy)) {
+                            if (dx > 0) moveRight();
+                            else moveLeft();
+                        } else if (dy < -25) {
+                            triggerJump();
+                        }
+                    }
+                }
+            }, { passive: true });
+
+            // Responsif saat ukuran jendela diubah
+            window.addEventListener('resize', () => {
+                if (!camera || !renderer) return;
+                camera.aspect = container.clientWidth / container.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(container.clientWidth, container.clientHeight, false);
+            });
+        }
+
+        // ============================================================================
+        // 11. GAME LOOP UTAMA & PEMANTAU FPS REAL-TIME
+        // ============================================================================
+        let lastTime = performance.now();
+        let frameCount = 0;
+        let fpsAccumulator = 0;
+
+        function updateGame(dt, elapsedTime) {
+            // 1. Update Kamera (Mengikuti sedikit pergerakan pemain + sudut mouse)
+            const targetCamX = state.playerX * 0.35 + Math.sin(state.camYaw) * 6;
+            const targetCamY = 4.2 + state.camPitch * 4;
+            camera.position.x += (targetCamX - camera.position.x) * 8 * dt;
+            camera.position.y += (targetCamY - camera.position.y) * 8 * dt;
+            camera.lookAt(state.playerX * 0.2, 1.0, -10);
+
+            // Jika sedang di Menu atau Pause, cukup animasikan pesawat mengambang
+            if (state.mode !== 'PLAYING') {
+                playerGroup.position.y = 0.65 + Math.sin(elapsedTime * 3.5) * 0.12;
+                playerShipMesh.rotation.z = Math.sin(elapsedTime * 2) * 0.08;
+                return;
+            }
+
+            // 2. Tingkatkan Kecepatan Secara Bertahap
+            state.currentSpeed = Math.min(state.maxSpeed, state.currentSpeed + dt * 0.55);
+            const moveDist = state.currentSpeed * dt;
+            state.distanceTraveled += moveDist;
+            state.score += moveDist * 0.35 * state.combo;
+
+            if (state.invincibleTimer > 0) {
+                state.invincibleTimer -= dt;
+                playerShipMesh.visible = Math.floor(elapsedTime * 20) % 2 === 0;
+            } else {
+                playerShipMesh.visible = true;
+            }
+
+            // 3. Interpolasi Pindah Lajur (Lerp Mulus) & Kemiringan Pesawat
+            const targetX = LANES[state.laneIndex];
+            const diffX = targetX - state.playerX;
+            state.playerX += diffX * Math.min(1, 14 * dt);
+            playerGroup.position.x = state.playerX;
+
+            // Kemiringan saat belok & melompat
+            playerShipMesh.rotation.z = -diffX * 0.22;
+            playerShipMesh.rotation.x = state.isJumping ? (state.playerVelY * 0.025) : 0;
+
+            // 4. Fisika Lompatan (Gravitasi Ringan)
+            if (state.isJumping) {
+                state.playerY += state.playerVelY * dt;
+                state.playerVelY -= 30 * dt; // Gravitasi
+                if (state.playerY <= 0.65) {
+                    state.playerY = 0.65;
+                    state.playerVelY = 0;
+                    state.isJumping = false;
+                }
+            } else {
+                // Efek mengambang halus saat tidak melompat
+                state.playerY = 0.65 + Math.sin(elapsedTime * 6) * 0.06;
+            }
+            playerGroup.position.y = state.playerY;
+
+            // Update Bayangan Palsu (Mengecil saat pesawat melompat tinggi)
+            playerShadowMesh.position.x = state.playerX;
+            const shadowScale = Math.max(0.4, 1.0 - (state.playerY - 0.65) * 0.22);
+            playerShadowMesh.scale.set(shadowScale, shadowScale, 1);
+
+            // Efek Getar Api Thruster & Rotasi Perisai
+            engineFlameMesh.scale.z = 0.8 + Math.sin(elapsedTime * 35) * 0.3;
+            if (state.hasShield) {
+                shieldMesh.rotation.y += 2.5 * dt;
+                shieldMesh.rotation.x += 1.5 * dt;
+            }
+
+            // 5. Gerakkan Garis Grid Lantai & Piramida Tepi Jalan (Daur Ulang Posisi)
+            for (let i = 0; i < gridLinePool.length; i++) {
+                const line = gridLinePool[i];
+                line.position.z += moveDist;
+                if (line.position.z > DESPAWN_Z) {
+                    line.position.z -= 14 * 7.2;
+                }
+            }
+
+            for (let i = 0; i < sidePropPool.length; i++) {
+                const prop = sidePropPool[i];
+                prop.position.z += moveDist;
+                if (prop.position.z > DESPAWN_Z) {
+                    prop.position.z -= 12 * 8.5;
+                }
+            }
+
+            // 6. Timer Munculnya Baris Rintangan Baru
+            state.spawnTimer -= dt;
+            if (state.spawnTimer <= 0) {
+                spawnObstacleWave();
+                // Jarak waktu antar gelombang menyesuaikan kecepatan
+                state.spawnTimer = Math.max(0.42, 24 / state.currentSpeed);
+            }
+
+            // 7. Update Semua Rintangan & Item Aktif di Pool + Deteksi Tabrakan Cepat
+            for (let i = 0; i < obstaclePool.length; i++) {
+                const item = obstaclePool[i];
+                if (!item.active) continue;
+
+                item.mesh.position.z += moveDist;
+
+                // Putar kristal & perisai agar menarik secara visual
+                if (item.type === 'CRYSTAL' || item.type === 'SHIELD') {
+                    item.mesh.rotation.y += 3.2 * dt;
+                }
+
+                // Cek Tabrakan jika berada dekat posisi Z pemain
+                const dz = Math.abs(item.mesh.position.z - PLAYER_Z);
+                const dx = Math.abs(item.mesh.position.x - state.playerX);
+
+                if (dz < 1.15 && dx < 1.05) {
+                    if (item.type === 'CRYSTAL') {
+                        // Ambil Kristal Energi Biru
+                        item.active = false;
+                        item.mesh.visible = false;
+                        state.score += 50 * state.combo;
+                        state.combo = Math.min(10, state.combo + 1);
+                        sfx.collectCrystal(state.combo);
+                        triggerParticles(item.mesh.position.x, item.mesh.position.y, item.mesh.position.z);
+                        continue;
+                    } else if (item.type === 'SHIELD') {
+                        // Ambil Perisai Pelindung
+                        item.active = false;
+                        item.mesh.visible = false;
+                        state.hasShield = true;
+                        shieldMesh.visible = true;
+                        shieldBadgeEl.classList.remove('hidden');
+                        sfx.collectShield();
+                        showToast('🛡️ Perisai Pelindung Aktif!');
+                        triggerParticles(item.mesh.position.x, item.mesh.position.y, item.mesh.position.z);
+                        continue;
+                    } else if (state.invincibleTimer <= 0) {
+                        // Cek apakah pemain berhasil melompati Barier Rendah
+                        const clearedLowBarrier = (item.type === 'LOW_BARRIER' && state.playerY > 1.38);
+
+                        if (!clearedLowBarrier) {
+                            if (state.hasShield) {
+                                // Perisai menahan 1 tabrakan!
+                                state.hasShield = false;
+                                shieldMesh.visible = false;
+                                shieldBadgeEl.classList.add('hidden');
+                                state.invincibleTimer = 1.2;
+                                state.combo = 1;
+                                item.active = false;
+                                item.mesh.visible = false;
+                                sfx.shieldBreak();
+                                showToast('💥 Perisai Menahan Tabrakan!');
+                                triggerParticles(state.playerX, state.playerY, PLAYER_Z);
+                                continue;
+                            } else {
+                                // Game Over
+                                triggerParticles(state.playerX, state.playerY, PLAYER_Z);
+                                triggerGameOver();
+                                return;
+                            }
+                        }
+                    }
+                }
+
+                // Daur ulang objek yang sudah lewat di belakang kamera
+                if (item.mesh.position.z > DESPAWN_Z) {
+                    // Jika kristal terlewat, reset multiplier combo ke x1
+                    if (item.type === 'CRYSTAL' && state.combo > 1) {
+                        state.combo = 1;
+                    }
+                    item.active = false;
+                    item.mesh.visible = false;
+                }
+            }
+
+            // 8. Update Partikel Aktif di Pool
+            for (let i = 0; i < particlePool.length; i++) {
+                const p = particlePool[i];
+                if (!p.active) continue;
+                p.life -= dt;
+                if (p.life <= 0) {
+                    p.active = false;
+                    p.mesh.visible = false;
+                } else {
+                    p.mesh.position.x += p.vx * dt;
+                    p.mesh.position.y += p.vy * dt;
+                    p.mesh.position.z += p.vz * dt;
+                    p.vy -= 18 * dt;
+                    p.mesh.rotation.x += 6 * dt;
+                    p.mesh.rotation.y += 6 * dt;
+                }
+            }
+
+            // 9. Perbarui tampilan Skor di HUD
+            updateHUD();
+        }
+
+        function animate(now) {
+            requestAnimationFrame(animate);
+
+            const dt = Math.min((now - lastTime) / 1000, 0.1);
+            lastTime = now;
+
+            // Hitung FPS setiap 0.5 detik
+            frameCount++;
+            fpsAccumulator += dt;
+            if (fpsAccumulator >= 0.5) {
+                const currentFps = Math.round(frameCount / fpsAccumulator);
+                fpsCounterEl.textContent = currentFps + ' FPS';
+                if (currentFps >= 50) {
+                    fpsCounterEl.className = 'text-emerald-300 font-bold';
+                    fpsDotEl.className = 'w-2 h-2 rounded-full bg-emerald-400';
+                } else if (currentFps >= 30) {
+                    fpsCounterEl.className = 'text-amber-300 font-bold';
+                    fpsDotEl.className = 'w-2 h-2 rounded-full bg-amber-400';
+                } else {
+                    fpsCounterEl.className = 'text-rose-400 font-bold';
+                    fpsDotEl.className = 'w-2 h-2 rounded-full bg-rose-500';
+                }
+                frameCount = 0;
+                fpsAccumulator = 0;
+            }
+
+            updateGame(dt, now * 0.001);
+            renderer.render(scene, camera);
+        }
+
+        // Pastikan seluruh inisialisasi dan loop animasi dimulai saat window.onload
+        window.onload = function () {
+            initThreeJS();
+            setupEventListeners();
+            lastTime = performance.now();
+            animate(lastTime);
+        };
+    </script>
+</body>
+</html>
